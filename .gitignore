@@ -1,0 +1,14 @@
+.tools/
+dist/
+installer/payload/zyr.exe
+installer/payload/zyr-git-commit.exe
+.e2e/
+.test-install*/
+.dispatcher-install-test/
+
+# Local editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+reset_repo.bat 
