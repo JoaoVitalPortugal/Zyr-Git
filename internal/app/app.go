@@ -23,6 +23,12 @@ type Git interface {
 	CurrentBranch() (string, error)
 	HasOriginUpstream(branch string) (bool, error)
 	Push(branch string, setUpstream bool) error
+	RepositoryName() (string, error)
+	CreateOrphanBranch(name string) error
+	AddAllFiles() error
+	CommitInitial(message string) error
+	ReplaceCurrentBranch(name string) error
+	ForcePush(branch string) error
 }
 
 type GitInstaller interface {
@@ -45,6 +51,7 @@ type UI interface {
 	Warning(message string)
 	Prompt(label string) (string, error)
 	Confirm(label string) (bool, error)
+	ConfirmExplicit(label string) (bool, error)
 }
 
 type Application struct {

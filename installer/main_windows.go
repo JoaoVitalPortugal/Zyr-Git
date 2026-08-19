@@ -247,7 +247,7 @@ func install(options setupOptions) error {
 		Command:       "git",
 		Executable:    componentPath,
 		Version:       version,
-		Description:   "Cria commits e envia alterações com Git",
+		Description:   "Cria commits, envia alterações e reseta históricos Git",
 		Owner:         productName,
 	}
 	if err := writeJSON(manifestPath, manifest); err != nil {

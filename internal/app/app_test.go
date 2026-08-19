@@ -17,6 +17,7 @@ type fakeGit struct {
 	changes           bool
 	staged            bool
 	branch            string
+	repositoryName    string
 	upstream          bool
 	pushError         error
 	initCalled        bool
@@ -25,19 +26,21 @@ type fakeGit struct {
 	commitMessage     string
 	pushCalled        bool
 	setUpstreamCalled bool
+	destructive       []string
 }
 
 func defaultFakeGit() *fakeGit {
 	return &fakeGit{
-		version:    "git version 2.50.0",
-		config:     map[string]string{"user.name": "Ana", "user.email": "ana@example.com"},
-		repository: true,
-		origin:     "https://github.com/example/project.git",
-		hasOrigin:  true,
-		changes:    true,
-		staged:     true,
-		branch:     "main",
-		upstream:   true,
+		version:        "git version 2.50.0",
+		config:         map[string]string{"user.name": "Ana", "user.email": "ana@example.com"},
+		repository:     true,
+		origin:         "https://github.com/example/project.git",
+		hasOrigin:      true,
+		changes:        true,
+		staged:         true,
+		branch:         "main",
+		repositoryName: "project",
+		upstream:       true,
 	}
 }
 
@@ -65,6 +68,27 @@ func (g *fakeGit) HasOriginUpstream(string) (bool, error) { return g.upstream, n
 func (g *fakeGit) Push(_ string, setUpstream bool) error {
 	g.pushCalled, g.setUpstreamCalled = true, setUpstream
 	return g.pushError
+}
+func (g *fakeGit) RepositoryName() (string, error) { return g.repositoryName, nil }
+func (g *fakeGit) CreateOrphanBranch(name string) error {
+	g.destructive = append(g.destructive, "orphan:"+name)
+	return nil
+}
+func (g *fakeGit) AddAllFiles() error {
+	g.destructive = append(g.destructive, "add-all")
+	return nil
+}
+func (g *fakeGit) CommitInitial(message string) error {
+	g.destructive = append(g.destructive, "commit:"+message)
+	return nil
+}
+func (g *fakeGit) ReplaceCurrentBranch(name string) error {
+	g.destructive = append(g.destructive, "replace:"+name)
+	return nil
+}
+func (g *fakeGit) ForcePush(branch string) error {
+	g.destructive = append(g.destructive, "force-push:"+branch)
+	return nil
 }
 
 type fakeInstaller struct {
@@ -114,6 +138,14 @@ func (u *fakeUI) Prompt(string) (string, error) {
 func (u *fakeUI) Confirm(string) (bool, error) {
 	if len(u.confirmations) == 0 {
 		return false, errors.New("teste sem resposta de confirmação")
+	}
+	answer := u.confirmations[0]
+	u.confirmations = u.confirmations[1:]
+	return answer, nil
+}
+func (u *fakeUI) ConfirmExplicit(string) (bool, error) {
+	if len(u.confirmations) == 0 {
+		return false, errors.New("teste sem resposta de confirmação explícita")
 	}
 	answer := u.confirmations[0]
 	u.confirmations = u.confirmations[1:]

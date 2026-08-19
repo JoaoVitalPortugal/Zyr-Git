@@ -33,7 +33,7 @@ func main() {
 		printHelp()
 		return
 	}
-	if len(args) != 1 || args[0] != "commit" {
+	if len(args) != 1 || (args[0] != "commit" && args[0] != "reset-history") {
 		fmt.Fprintln(os.Stderr, "✕ Comando Git desconhecido.")
 		printHelp()
 		os.Exit(2)
@@ -42,15 +42,22 @@ func main() {
 	ui := terminal.New(os.Stdin, os.Stdout)
 	executor := command.OSExecutor{}
 	git := gitclient.New(executor)
-	application := app.Application{
-		Git:       git,
-		Installer: platform.NewGitInstaller(runtime.GOOS, executor),
-		State:     state.NewGitState(git),
-		Ignore:    gitignore.NewCurrentDirectoryManager(),
-		UI:        ui,
+	var runError error
+	switch args[0] {
+	case "commit":
+		application := app.Application{
+			Git:       git,
+			Installer: platform.NewGitInstaller(runtime.GOOS, executor),
+			State:     state.NewGitState(git),
+			Ignore:    gitignore.NewCurrentDirectoryManager(),
+			UI:        ui,
+		}
+		runError = application.Run(context.Background())
+	case "reset-history":
+		runError = (app.ResetHistoryApplication{Git: git, UI: ui}).Run(context.Background())
 	}
-	if err := application.Run(context.Background()); err != nil {
-		ui.Error(err.Error())
+	if runError != nil {
+		ui.Error(runError.Error())
 		os.Exit(1)
 	}
 }
@@ -59,7 +66,8 @@ func printHelp() {
 	fmt.Fprintln(os.Stdout, "Uso: zyr git <comando>")
 	fmt.Fprintln(os.Stdout)
 	fmt.Fprintln(os.Stdout, "Comandos:")
-	fmt.Fprintln(os.Stdout, "  commit    Adiciona alterações, cria um commit e faz push")
+	fmt.Fprintln(os.Stdout, "  commit          Adiciona alterações, cria um commit e faz push")
+	fmt.Fprintln(os.Stdout, "  reset-history   Substitui o histórico por um novo commit inicial")
 	fmt.Fprintln(os.Stdout)
-	fmt.Fprintln(os.Stdout, "Execute: zyr git commit")
+	fmt.Fprintln(os.Stdout, "Execute: zyr git <comando>")
 }

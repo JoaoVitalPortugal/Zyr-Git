@@ -43,6 +43,16 @@ git push
 
 Se não houver alterações, ele encerra sem criar um commit vazio.
 
+## Resetar o histórico
+
+Para substituir o histórico da branch atual por um único commit com o estado atual dos arquivos:
+
+```powershell
+zyr git reset-history
+```
+
+Antes de alterar o repositório, o Zyr mostra o nome, a branch e o remote e pede uma confirmação explícita. Ao confirmar, os commits anteriores da branch são substituídos e a nova história é enviada com push forçado.
+
 ## GitHub
 
 O Zyr não cria o repositório no GitHub. Crie o repositório remoto primeiro e informe a URL quando o programa solicitar.
@@ -62,7 +72,7 @@ Abra **Configurações > Aplicativos > Aplicativos instalados**, procure por **Z
 Requisitos: Go 1.24 ou superior e PowerShell.
 
 ```powershell
-.\scripts\build.ps1 -Version 0.2.1
+.\scripts\build.ps1 -Version 0.3.0
 ```
 
 Os testes são executados durante o build. O resultado final é um único instalador:

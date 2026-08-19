@@ -59,3 +59,18 @@ func (t *Terminal) Confirm(label string) (bool, error) {
 		}
 	}
 }
+
+// ConfirmExplicit asks only once. It is used by destructive operations so
+// every response other than an explicit affirmative answer cancels the action.
+func (t *Terminal) ConfirmExplicit(label string) (bool, error) {
+	answer, err := t.Prompt(label)
+	if err != nil {
+		return false, err
+	}
+	switch strings.ToLower(strings.TrimSpace(answer)) {
+	case "s", "sim", "y", "yes":
+		return true, nil
+	default:
+		return false, nil
+	}
+}

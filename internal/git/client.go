@@ -141,6 +141,39 @@ func (c *Client) Push(branch string, setUpstream bool) error {
 	return err
 }
 
+func (c *Client) RepositoryName() (string, error) {
+	out, err := c.run("identificar o repositório", "rev-parse", "--show-toplevel")
+	if err != nil {
+		return "", err
+	}
+	return filepath.Base(filepath.Clean(strings.TrimSpace(out))), nil
+}
+
+func (c *Client) CreateOrphanBranch(name string) error {
+	_, err := c.run("criar a nova história", "checkout", "--orphan", name)
+	return err
+}
+
+func (c *Client) AddAllFiles() error {
+	_, err := c.run("adicionar o estado atual dos arquivos", "add", "-A")
+	return err
+}
+
+func (c *Client) CommitInitial(message string) error {
+	_, err := c.run("criar o novo commit inicial", "commit", "-m", message)
+	return err
+}
+
+func (c *Client) ReplaceCurrentBranch(name string) error {
+	_, err := c.run("substituir a branch original", "branch", "-M", name)
+	return err
+}
+
+func (c *Client) ForcePush(branch string) error {
+	_, err := c.run("enviar a nova história", "push", "--force", "origin", branch)
+	return err
+}
+
 func (c *Client) GitPath(name string) (string, error) {
 	out, err := c.run("localizar os metadados do Zyr", "rev-parse", "--git-path", name)
 	if err != nil {
