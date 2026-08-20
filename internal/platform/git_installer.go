@@ -12,8 +12,45 @@ type GitInstaller struct {
 	executor command.Executor
 }
 
+type GitHubCLIInstaller struct {
+	osName   string
+	executor command.Executor
+}
+
 func NewGitInstaller(osName string, executor command.Executor) *GitInstaller {
 	return &GitInstaller{osName: osName, executor: executor}
+}
+
+func NewGitHubCLIInstaller(osName string, executor command.Executor) *GitHubCLIInstaller {
+	return &GitHubCLIInstaller{osName: osName, executor: executor}
+}
+
+func (i *GitHubCLIInstaller) InstallGitHubCLI() error {
+	if i.osName != "windows" {
+		return fmt.Errorf("a instalação automática do GitHub CLI está disponível apenas no Windows; consulte https://cli.github.com")
+	}
+	if path, ok := find(i.executor, "winget"); ok {
+		return run(i.executor, path, "install", "--id", "GitHub.cli", "-e", "--source", "winget", "--accept-package-agreements", "--accept-source-agreements")
+	}
+	if path, ok := find(i.executor, "choco"); ok {
+		return run(i.executor, path, "install", "gh", "-y")
+	}
+	if path, ok := find(i.executor, "scoop"); ok {
+		return run(i.executor, path, "install", "gh")
+	}
+	return fmt.Errorf("nenhum instalador compatível foi encontrado (winget, Chocolatey ou Scoop); instale o GitHub CLI por https://cli.github.com")
+}
+
+func find(executor command.Executor, name string) (string, bool) {
+	path, err := executor.LookPath(name)
+	return path, err == nil
+}
+
+func run(executor command.Executor, name string, args ...string) error {
+	if err := executor.Interactive(name, args...); err != nil {
+		return fmt.Errorf("o comando de instalação falhou: %w", err)
+	}
+	return nil
 }
 
 func (i *GitInstaller) InstallGit() error {
@@ -85,13 +122,9 @@ func (i *GitInstaller) runElevated(name string, args ...string) error {
 }
 
 func (i *GitInstaller) run(name string, args ...string) error {
-	if err := i.executor.Interactive(name, args...); err != nil {
-		return fmt.Errorf("o comando de instalação falhou: %w", err)
-	}
-	return nil
+	return run(i.executor, name, args...)
 }
 
 func (i *GitInstaller) find(name string) (string, bool) {
-	path, err := i.executor.LookPath(name)
-	return path, err == nil
+	return find(i.executor, name)
 }

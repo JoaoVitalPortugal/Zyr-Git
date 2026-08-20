@@ -1,6 +1,6 @@
 # Zyr Git Commit
 
-Um jeito mais simples de adicionar alterações, criar um commit e enviar tudo para o repositório remoto.
+Um jeito mais simples de trabalhar com Git e GitHub pelo terminal.
 
 ```powershell
 zyr git commit
@@ -53,11 +53,27 @@ zyr git reset-history
 
 Antes de alterar o repositório, o Zyr mostra o nome, a branch e o remote e pede uma confirmação explícita. Ao confirmar, os commits anteriores da branch são substituídos e a nova história é enviada com push forçado.
 
+## Excluir um repositório do GitHub
+
+```powershell
+zyr git delete-repo
+```
+
+O Zyr usa o GitHub CLI (`gh`) para mostrar os repositórios disponíveis. Escolha um número, confira os detalhes e digite o nome completo, como `JoaoVitalPortugal/projeto`, para confirmar.
+
+Essa ação exclui permanentemente o repositório remoto, mas não altera nenhum arquivo ou repositório local. O comando só prossegue quando a conta autenticada possui permissão administrativa.
+
+Se o GitHub CLI não estiver instalado no Windows, o Zyr pode instalá-lo após pedir autorização. Se você ainda não estiver autenticado, o próprio comando oferece abrir o login oficial do GitHub no navegador.
+
+Antes de mostrar os repositórios, o Zyr também verifica a permissão `delete_repo`. Quando ela não existe, explica o que ela permite, pede sua confirmação e abre o fluxo oficial do GitHub para autorizá-la. O comando só continua depois de confirmar o login e a permissão.
+
+Você não precisa executar nenhum comando do `gh` manualmente. Basta iniciar `zyr git delete-repo` e responder às confirmações exibidas pelo Zyr.
+
 ## GitHub
 
 O Zyr não cria o repositório no GitHub. Crie o repositório remoto primeiro e informe a URL quando o programa solicitar.
 
-Senhas e tokens não são pedidos nem armazenados. A autenticação continua sendo feita pelo próprio Git, pelo Git Credential Manager ou pelas suas chaves SSH.
+Senhas e tokens não são pedidos nem armazenados. A autenticação dos commits continua sendo feita pelo Git, e a exclusão de repositórios usa a sessão do GitHub CLI.
 
 ## Sobre o projeto
 
@@ -72,7 +88,7 @@ Abra **Configurações > Aplicativos > Aplicativos instalados**, procure por **Z
 Requisitos: Go 1.24 ou superior e PowerShell.
 
 ```powershell
-.\scripts\build.ps1 -Version 0.3.0
+.\scripts\build.ps1 -Version 0.4.1
 ```
 
 Os testes são executados durante o build. O resultado final é um único instalador:

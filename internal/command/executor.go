@@ -79,6 +79,24 @@ func (OSExecutor) LookPath(name string) (string, error) {
 			}
 		}
 	}
+	if runtime.GOOS == "windows" && strings.EqualFold(name, "gh") {
+		var candidates []string
+		addCandidate := func(base string, parts ...string) {
+			if base != "" {
+				candidates = append(candidates, filepath.Join(append([]string{base}, parts...)...))
+			}
+		}
+		addCandidate(os.Getenv("ProgramFiles"), "GitHub CLI", "gh.exe")
+		addCandidate(os.Getenv("ProgramFiles(x86)"), "GitHub CLI", "gh.exe")
+		addCandidate(os.Getenv("ProgramData"), "chocolatey", "bin", "gh.exe")
+		addCandidate(os.Getenv("USERPROFILE"), "scoop", "shims", "gh.exe")
+		addCandidate(os.Getenv("LOCALAPPDATA"), "Microsoft", "WinGet", "Links", "gh.exe")
+		for _, candidate := range candidates {
+			if info, statErr := os.Stat(candidate); statErr == nil && !info.IsDir() {
+				return candidate, nil
+			}
+		}
+	}
 	return "", err
 }
 

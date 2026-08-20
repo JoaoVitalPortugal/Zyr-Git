@@ -63,3 +63,32 @@ func TestMacOSGitInstallationUsesHomebrew(t *testing.T) {
 		t.Fatalf("unexpected macOS command: %v %v", executor.interactive, executor.args)
 	}
 }
+
+func TestWindowsGitHubCLIInstallationUsesWinget(t *testing.T) {
+	executor := &fakeExecutor{paths: map[string]string{"winget": `C:\winget.exe`}}
+	if err := NewGitHubCLIInstaller("windows", executor).InstallGitHubCLI(); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"install", "--id", "GitHub.cli", "-e", "--source", "winget", "--accept-package-agreements", "--accept-source-agreements"}
+	if executor.interactive[0] != `C:\winget.exe` || !reflect.DeepEqual(executor.args[0], want) {
+		t.Fatalf("unexpected GitHub CLI command: %v %v", executor.interactive, executor.args)
+	}
+}
+
+func TestWindowsGitHubCLIInstallationFallsBackToChocolatey(t *testing.T) {
+	executor := &fakeExecutor{paths: map[string]string{"choco": `C:\choco.exe`}}
+	if err := NewGitHubCLIInstaller("windows", executor).InstallGitHubCLI(); err != nil {
+		t.Fatal(err)
+	}
+	if executor.interactive[0] != `C:\choco.exe` || !reflect.DeepEqual(executor.args[0], []string{"install", "gh", "-y"}) {
+		t.Fatalf("unexpected GitHub CLI command: %v %v", executor.interactive, executor.args)
+	}
+}
+
+func TestGitHubCLIAutomaticInstallationIsWindowsOnly(t *testing.T) {
+	executor := &fakeExecutor{paths: map[string]string{"brew": "/opt/homebrew/bin/brew"}}
+	err := NewGitHubCLIInstaller("darwin", executor).InstallGitHubCLI()
+	if err == nil || len(executor.interactive) != 0 {
+		t.Fatalf("non-Windows installation should be manual: err=%v commands=%v", err, executor.interactive)
+	}
+}

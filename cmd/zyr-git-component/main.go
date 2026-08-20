@@ -9,6 +9,7 @@ import (
 	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/app"
 	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/command"
 	gitclient "github.com/JoaoVitalPortugal/zyr-git-commit/internal/git"
+	githubclient "github.com/JoaoVitalPortugal/zyr-git-commit/internal/github"
 	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/gitignore"
 	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/platform"
 	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/state"
@@ -33,7 +34,7 @@ func main() {
 		printHelp()
 		return
 	}
-	if len(args) != 1 || (args[0] != "commit" && args[0] != "reset-history") {
+	if len(args) != 1 || (args[0] != "commit" && args[0] != "reset-history" && args[0] != "delete-repo") {
 		fmt.Fprintln(os.Stderr, "✕ Comando Git desconhecido.")
 		printHelp()
 		os.Exit(2)
@@ -55,6 +56,12 @@ func main() {
 		runError = application.Run(context.Background())
 	case "reset-history":
 		runError = (app.ResetHistoryApplication{Git: git, UI: ui}).Run(context.Background())
+	case "delete-repo":
+		runError = (app.DeleteRepoApplication{
+			GitHub:    githubclient.New(executor),
+			Installer: platform.NewGitHubCLIInstaller(runtime.GOOS, executor),
+			UI:        ui,
+		}).Run(context.Background())
 	}
 	if runError != nil {
 		ui.Error(runError.Error())
@@ -68,6 +75,7 @@ func printHelp() {
 	fmt.Fprintln(os.Stdout, "Comandos:")
 	fmt.Fprintln(os.Stdout, "  commit          Adiciona alterações, cria um commit e faz push")
 	fmt.Fprintln(os.Stdout, "  reset-history   Substitui o histórico por um novo commit inicial")
+	fmt.Fprintln(os.Stdout, "  delete-repo     Exclui permanentemente um repositório remoto do GitHub")
 	fmt.Fprintln(os.Stdout)
 	fmt.Fprintln(os.Stdout, "Execute: zyr git <comando>")
 }
