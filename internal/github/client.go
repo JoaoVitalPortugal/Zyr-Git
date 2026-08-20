@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/command"
 )
@@ -14,8 +15,18 @@ import (
 var (
 	ownerPattern       = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$`)
 	repositoryPattern  = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
+	gitignorePattern   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9+._-]*$`)
 	deleteScopePattern = regexp.MustCompile(`(?i)(^|[^A-Za-z0-9_])delete_repo([^A-Za-z0-9_]|$)`)
 )
+
+type CreateRepositoryOptions struct {
+	Owner       string
+	Name        string
+	Description string
+	Visibility  string
+	AddReadme   bool
+	Gitignore   string
+}
 
 type Repository struct {
 	Name       string `json:"name"`
@@ -63,6 +74,76 @@ func (c *Client) HasDeleteRepoScope() (bool, error) {
 
 func (c *Client) AuthorizeDeleteRepo() error {
 	return c.runInteractive("autorizar a permissão delete_repo", "auth", "refresh", "--hostname", "github.com", "--scopes", "delete_repo")
+}
+
+func (c *Client) CurrentUser() (string, error) {
+	login, err := c.run("identificar a conta do GitHub", "api", "--hostname", "github.com", "user", "--jq", ".login")
+	if err != nil {
+		return "", err
+	}
+	if !ownerPattern.MatchString(login) {
+		return "", fmt.Errorf("o GitHub CLI retornou um nome de usuário inválido")
+	}
+	return login, nil
+}
+
+func (c *Client) GitignoreTemplates() ([]string, error) {
+	output, err := c.run("listar os templates de .gitignore", "repo", "gitignore", "list")
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]struct{})
+	templates := make([]string, 0)
+	for _, line := range strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
+		name := strings.TrimSpace(line)
+		if name == "" {
+			continue
+		}
+		if !gitignorePattern.MatchString(name) {
+			return nil, fmt.Errorf("o GitHub CLI retornou um template de .gitignore inválido")
+		}
+		key := strings.ToLower(name)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		templates = append(templates, name)
+	}
+	sort.Slice(templates, func(i, j int) bool {
+		return strings.ToLower(templates[i]) < strings.ToLower(templates[j])
+	})
+	return templates, nil
+}
+
+func (c *Client) CreateRepository(options CreateRepositoryOptions) (string, error) {
+	if !ownerPattern.MatchString(options.Owner) || !ValidRepositoryName(options.Name) {
+		return "", fmt.Errorf("nome de repositório inválido")
+	}
+	if utf8.RuneCountInString(options.Description) > 350 || strings.ContainsRune(options.Description, '\x00') {
+		return "", fmt.Errorf("a descrição do repositório deve ter no máximo 350 caracteres")
+	}
+	if options.Visibility != "public" && options.Visibility != "private" {
+		return "", fmt.Errorf("visibilidade de repositório inválida")
+	}
+	if options.Gitignore != "" && !gitignorePattern.MatchString(options.Gitignore) {
+		return "", fmt.Errorf("template de .gitignore inválido")
+	}
+
+	fullName := options.Owner + "/" + options.Name
+	args := []string{"repo", "create", fullName, "--" + options.Visibility}
+	if options.Description != "" {
+		args = append(args, "--description", options.Description)
+	}
+	if options.AddReadme {
+		args = append(args, "--add-readme")
+	}
+	if options.Gitignore != "" {
+		args = append(args, "--gitignore", options.Gitignore)
+	}
+	if _, err := c.run("criar o repositório no GitHub", args...); err != nil {
+		return "", err
+	}
+	return "https://github.com/" + fullName, nil
 }
 
 func (c *Client) Repositories() ([]Repository, error) {
@@ -156,5 +237,9 @@ func validateRepository(repository Repository) error {
 
 func validFullName(fullName string) bool {
 	parts := strings.Split(fullName, "/")
-	return len(parts) == 2 && len(parts[1]) <= 100 && parts[1] != "." && parts[1] != ".." && ownerPattern.MatchString(parts[0]) && repositoryPattern.MatchString(parts[1])
+	return len(parts) == 2 && ownerPattern.MatchString(parts[0]) && ValidRepositoryName(parts[1])
+}
+
+func ValidRepositoryName(name string) bool {
+	return len(name) <= 100 && name != "." && name != ".." && repositoryPattern.MatchString(name)
 }

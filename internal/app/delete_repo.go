@@ -10,17 +10,11 @@ import (
 )
 
 type GitHub interface {
-	Version() (string, error)
-	Authenticated() error
-	Login() error
+	GitHubSession
 	HasDeleteRepoScope() (bool, error)
 	AuthorizeDeleteRepo() error
 	Repositories() ([]githubclient.Repository, error)
 	DeleteRepository(fullName string) error
-}
-
-type GitHubCLIInstaller interface {
-	InstallGitHubCLI() error
 }
 
 type DeleteRepoApplication struct {
@@ -33,45 +27,12 @@ func (a DeleteRepoApplication) Run(ctx context.Context) error {
 	_ = ctx
 	a.UI.Banner()
 
-	version, err := a.GitHub.Version()
+	ready, err := ensureGitHubSession(a.GitHub, a.Installer, a.UI)
 	if err != nil {
-		a.UI.Warning("GitHub CLI não encontrado.")
-		accepted, promptErr := a.UI.Confirm("Deseja instalar o GitHub CLI automaticamente? [S/N]")
-		if promptErr != nil {
-			return promptErr
-		}
-		if !accepted {
-			a.UI.Println("Operação cancelada. Nenhuma alteração foi realizada.")
-			return nil
-		}
-		if err := a.Installer.InstallGitHubCLI(); err != nil {
-			return fmt.Errorf("não foi possível instalar o GitHub CLI: %w", err)
-		}
-		version, err = a.GitHub.Version()
-		if err != nil {
-			return fmt.Errorf("o instalador terminou, mas o GitHub CLI ainda não pôde ser executado: %w", err)
-		}
+		return err
 	}
-	a.UI.Success("GitHub CLI encontrado: " + firstLine(version))
-
-	if err := a.GitHub.Authenticated(); err != nil {
-		a.UI.Warning("O GitHub CLI não está autenticado em github.com.")
-		accepted, promptErr := a.UI.Confirm("Deseja entrar na sua conta pelo GitHub CLI agora? [S/N]")
-		if promptErr != nil {
-			return promptErr
-		}
-		if !accepted {
-			a.UI.Println("Operação cancelada. Nenhuma alteração foi realizada.")
-			return nil
-		}
-		a.UI.Println("O GitHub CLI abrirá o navegador para realizar o login com segurança.")
-		if err := a.GitHub.Login(); err != nil {
-			return fmt.Errorf("não foi possível entrar no GitHub: %w", err)
-		}
-		if err := a.GitHub.Authenticated(); err != nil {
-			return fmt.Errorf("o login terminou, mas a autenticação não pôde ser confirmada: %w", err)
-		}
-		a.UI.Success("Login no GitHub confirmado.")
+	if !ready {
+		return nil
 	}
 
 	hasDeleteScope, err := a.GitHub.HasDeleteRepoScope()

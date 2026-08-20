@@ -149,3 +149,66 @@ func TestDeleteRepoAuthorizationUsesOfficialRefreshFlow(t *testing.T) {
 		t.Fatalf("unexpected authorization call: %v", executor.interactiveCalls[0])
 	}
 }
+
+func TestCurrentUserUsesAuthenticatedGitHubAPI(t *testing.T) {
+	executor := &recordingExecutor{path: "gh", output: "JoaoVitalPortugal"}
+	login, err := New(executor).CurrentUser()
+	if err != nil || login != "JoaoVitalPortugal" {
+		t.Fatalf("unexpected login: %q err=%v", login, err)
+	}
+	want := []string{"gh", "api", "--hostname", "github.com", "user", "--jq", ".login"}
+	if !reflect.DeepEqual(executor.calls[0], want) {
+		t.Fatalf("unexpected current user call: %v", executor.calls[0])
+	}
+}
+
+func TestGitignoreTemplatesAreValidatedDeduplicatedAndSorted(t *testing.T) {
+	executor := &recordingExecutor{path: "gh", output: "Python\r\nGo\r\npython\r\nC++\r\n"}
+	templates, err := New(executor).GitignoreTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"C++", "Go", "Python"}
+	if !reflect.DeepEqual(templates, want) {
+		t.Fatalf("unexpected templates: want %v, got %v", want, templates)
+	}
+}
+
+func TestCreateRepositoryUsesOnlyRequestedGitHubOptions(t *testing.T) {
+	executor := &recordingExecutor{path: "gh"}
+	url, err := New(executor).CreateRepository(CreateRepositoryOptions{
+		Owner:       "JoaoVitalPortugal",
+		Name:        "new-project",
+		Description: "Descrição curta",
+		Visibility:  "private",
+		AddReadme:   true,
+		Gitignore:   "Go",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if url != "https://github.com/JoaoVitalPortugal/new-project" {
+		t.Fatalf("unexpected repository URL: %s", url)
+	}
+	want := []string{"gh", "repo", "create", "JoaoVitalPortugal/new-project", "--private", "--description", "Descrição curta", "--add-readme", "--gitignore", "Go"}
+	if !reflect.DeepEqual(executor.calls[0], want) {
+		t.Fatalf("unexpected create call:\nwant %v\n got %v", want, executor.calls[0])
+	}
+	for _, argument := range executor.calls[0] {
+		if argument == "--license" || argument == "--clone" || argument == "--push" || argument == "--source" {
+			t.Fatalf("unexpected option in create call: %s", argument)
+		}
+	}
+}
+
+func TestCreateRepositoryRejectsInvalidInputWithoutExecution(t *testing.T) {
+	executor := &recordingExecutor{path: "gh"}
+	_, err := New(executor).CreateRepository(CreateRepositoryOptions{
+		Owner:      "owner",
+		Name:       "invalid name",
+		Visibility: "public",
+	})
+	if err == nil || len(executor.calls) != 0 {
+		t.Fatalf("invalid repository should not execute gh: err=%v calls=%v", err, executor.calls)
+	}
+}

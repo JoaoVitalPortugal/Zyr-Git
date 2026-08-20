@@ -53,6 +53,18 @@ zyr git reset-history
 
 Antes de alterar o repositório, o Zyr mostra o nome, a branch e o remote e pede uma confirmação explícita. Ao confirmar, os commits anteriores da branch são substituídos e a nova história é enviada com push forçado.
 
+## Criar um repositório no GitHub
+
+```powershell
+zyr git add-repo
+```
+
+O comando pergunta o nome, a descrição, a visibilidade e se o novo repositório deve receber um README e um `.gitignore`. Se você escolher o `.gitignore`, também poderá selecionar um dos templates oficiais disponíveis no GitHub.
+
+Antes de criar, o Zyr mostra um resumo e pede confirmação. O repositório é criado na conta autenticada, sem licença e sem alterar, clonar ou enviar arquivos da pasta atual.
+
+Instalação do GitHub CLI e login são conduzidos pelo próprio comando quando necessário. Você não precisa executar comandos do `gh` manualmente.
+
 ## Excluir um repositório do GitHub
 
 ```powershell
@@ -71,9 +83,9 @@ Você não precisa executar nenhum comando do `gh` manualmente. Basta iniciar `z
 
 ## GitHub
 
-O Zyr não cria o repositório no GitHub. Crie o repositório remoto primeiro e informe a URL quando o programa solicitar.
+Para usar `zyr git commit` com um projeto existente, informe a URL do repositório remoto quando o programa solicitar. Para criar um repositório novo, use `zyr git add-repo`.
 
-Senhas e tokens não são pedidos nem armazenados. A autenticação dos commits continua sendo feita pelo Git, e a exclusão de repositórios usa a sessão do GitHub CLI.
+Senhas e tokens não são pedidos nem armazenados. A autenticação dos commits continua sendo feita pelo Git, enquanto a criação e a exclusão de repositórios usam a sessão do GitHub CLI.
 
 ## Sobre o projeto
 
@@ -88,7 +100,7 @@ Abra **Configurações > Aplicativos > Aplicativos instalados**, procure por **Z
 Requisitos: Go 1.24 ou superior e PowerShell.
 
 ```powershell
-.\scripts\build.ps1 -Version 0.4.1
+.\scripts\build.ps1 -Version 0.5.0
 ```
 
 Os testes são executados durante o build. O resultado final é um único instalador:

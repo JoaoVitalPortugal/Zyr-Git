@@ -247,7 +247,7 @@ func install(options setupOptions) error {
 		Command:       "git",
 		Executable:    componentPath,
 		Version:       version,
-		Description:   "Cria commits, gerencia históricos Git e exclui repositórios remotos",
+		Description:   "Cria commits e gerencia repositórios e históricos Git",
 		Owner:         productName,
 	}
 	if err := writeJSON(manifestPath, manifest); err != nil {
