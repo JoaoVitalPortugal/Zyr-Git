@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/app"
-	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/command"
-	gitclient "github.com/JoaoVitalPortugal/zyr-git-commit/internal/git"
-	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/terminal"
+	"github.com/JoaoVitalPortugal/zyr-git/internal/app"
+	"github.com/JoaoVitalPortugal/zyr-git/internal/command"
+	gitclient "github.com/JoaoVitalPortugal/zyr-git/internal/git"
+	"github.com/JoaoVitalPortugal/zyr-git/internal/terminal"
 )
 
 func TestResetHistoryDeclinedLeavesRealRepositoryUntouched(t *testing.T) {

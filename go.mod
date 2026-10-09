@@ -1,3 +1,3 @@
-module github.com/JoaoVitalPortugal/zyr-git-commit
+module github.com/JoaoVitalPortugal/zyr-git
 
 go 1.24.0

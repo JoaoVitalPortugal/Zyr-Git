@@ -21,6 +21,7 @@ type Component struct {
 	Command       string `json:"command"`
 	Executable    string `json:"executable"`
 	Version       string `json:"version"`
+	InstalledAt   string `json:"installedAt,omitempty"`
 	Description   string `json:"description"`
 	Owner         string `json:"owner"`
 }

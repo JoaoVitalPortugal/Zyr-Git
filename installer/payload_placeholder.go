@@ -5,3 +5,5 @@ package main
 // The release build replaces these with freshly compiled payloads.
 var launcherPayload []byte
 var gitComponentPayload []byte
+var dashboardPayload []byte
+var iconPayload []byte

@@ -66,7 +66,7 @@ func writeTestJSON(t *testing.T, path string, value interface{}) {
 
 func registerGitComponent(t *testing.T, home string) string {
 	t.Helper()
-	executable := createExecutable(t, filepath.Join(home, "installed"), "zyr-git-commit.exe")
+	executable := createExecutable(t, filepath.Join(home, "installed"), "zyr-git.exe")
 	writeTestJSON(t, filepath.Join(home, "components", "git.json"), Component{
 		SchemaVersion: 1,
 		Command:       "git",

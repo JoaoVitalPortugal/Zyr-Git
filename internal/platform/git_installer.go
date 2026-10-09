@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/command"
+	"github.com/JoaoVitalPortugal/zyr-git/internal/command"
 )
 
 type GitInstaller struct {

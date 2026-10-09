@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/launcher"
+	"github.com/JoaoVitalPortugal/zyr-git/internal/launcher"
 )
 
 var version = "dev"
@@ -20,6 +20,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "✕ "+err.Error())
 		os.Exit(1)
 	}
+	_ = os.Setenv("ZYR_CLI_HOME", home)
 	dispatcher := launcher.Dispatcher{
 		Home:         home,
 		LauncherPath: os.Args[0],

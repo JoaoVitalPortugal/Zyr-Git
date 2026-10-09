@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	githubclient "github.com/JoaoVitalPortugal/zyr-git-commit/internal/github"
+	githubclient "github.com/JoaoVitalPortugal/zyr-git/internal/github"
 )
 
 type RepositoryCreator interface {

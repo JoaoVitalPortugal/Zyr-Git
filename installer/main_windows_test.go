@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/launcher"
+	"github.com/JoaoVitalPortugal/zyr-git/internal/launcher"
 )
 
 func TestLauncherIsPrioritizedWithoutRemovingOtherZyr(t *testing.T) {
@@ -130,7 +130,7 @@ func TestDetectSetupState(t *testing.T) {
 }
 
 func TestSetupNoticesRequireExplicitConfirmation(t *testing.T) {
-	options := setupOptions{installDir: `C:\Apps\Zyr Git Commit`, sharedHome: `C:\Apps\Zyr CLI`}
+	options := setupOptions{installDir: `C:\Apps\Zyr Git`, sharedHome: `C:\Apps\Zyr CLI`}
 	tests := []struct {
 		name      string
 		state     setupState
@@ -160,7 +160,7 @@ func TestSetupNoticesRequireExplicitConfirmation(t *testing.T) {
 }
 
 func TestDelayedDeleteRemovesValidatedTemporaryFile(t *testing.T) {
-	file, err := os.CreateTemp("", "zyr-git-commit-uninstall-*.exe")
+	file, err := os.CreateTemp("", "zyr-git-uninstall-*.exe")
 	if err != nil {
 		t.Fatal(err)
 	}

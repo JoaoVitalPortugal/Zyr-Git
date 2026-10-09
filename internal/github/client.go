@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/command"
+	"github.com/JoaoVitalPortugal/zyr-git/internal/command"
 )
 
 var (

@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.5.0"
+    [string]$Version = (Get-Content (Join-Path (Split-Path -Parent $PSScriptRoot) "VERSION") -Raw).Trim()
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,8 +19,9 @@ if (Test-Path -LiteralPath $portableGo) {
 $dist = Join-Path $projectRoot "dist"
 $payloadDirectory = Join-Path $projectRoot "installer\payload"
 $launcherPayload = Join-Path $payloadDirectory "zyr.exe"
-$gitComponentPayload = Join-Path $payloadDirectory "zyr-git-commit.exe"
-$setup = Join-Path $dist "ZyrGitCommit-Setup.exe"
+$gitComponentPayload = Join-Path $payloadDirectory "zyr-git.exe"
+$dashboardPayload = Join-Path $payloadDirectory "zyr-git-dashboard.exe"
+$setup = Join-Path $dist "ZyrGit-Setup.exe"
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 New-Item -ItemType Directory -Force -Path $payloadDirectory | Out-Null
 
@@ -42,6 +43,9 @@ try {
     & $go build -trimpath -ldflags "-s -w -X main.version=$Version" -o $gitComponentPayload ./cmd/zyr-git-component
     if ($LASTEXITCODE -ne 0) { throw "Falha ao compilar o componente Git Commit." }
 
+    & $go build -trimpath -ldflags "-s -w -H windowsgui -X main.version=$Version" -o $dashboardPayload ./cmd/zyr-git-ui
+    if ($LASTEXITCODE -ne 0) { throw "Falha ao compilar o dashboard do Zyr Git." }
+
     & $go build -tags installerbuild -trimpath -ldflags "-s -w -X main.version=$Version" -o $setup ./installer
     if ($LASTEXITCODE -ne 0) { throw "Falha ao compilar o instalador." }
 
@@ -58,6 +62,9 @@ try {
     }
     if (Test-Path -LiteralPath $gitComponentPayload) {
         [System.IO.File]::Delete($gitComponentPayload)
+    }
+    if (Test-Path -LiteralPath $dashboardPayload) {
+        [System.IO.File]::Delete($dashboardPayload)
     }
     if ($null -eq $previousCgoEnabled) {
         Remove-Item Env:CGO_ENABLED -ErrorAction SilentlyContinue

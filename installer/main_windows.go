@@ -21,13 +21,15 @@ import (
 	"unicode/utf16"
 	"unsafe"
 
-	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/launcher"
+	"github.com/JoaoVitalPortugal/zyr-git/internal/launcher"
 )
 
 const (
-	productName       = "Zyr Git Commit"
+	productName       = "Zyr Git"
+	oldProductName    = "Zyr Git Commit"
 	publisher         = "João Vital/Jovenzinho"
-	uninstallKey      = `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Zyr Git Commit`
+	uninstallKey      = `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Zyr Git`
+	oldUninstallKey   = `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Zyr Git Commit`
 	componentProtocol = "zyr-component/git/1"
 )
 
@@ -59,6 +61,7 @@ func main() {
 
 type setupOptions struct {
 	silent          bool
+	autoUpdate      bool
 	installDir      string
 	sharedHome      string
 	noPath          bool
@@ -93,9 +96,10 @@ func parseOptions(args []string) (setupOptions, error) {
 		return setupOptions{}, err
 	}
 	var options setupOptions
-	flags := flag.NewFlagSet("ZyrGitCommit-Setup", flag.ContinueOnError)
+	flags := flag.NewFlagSet("ZyrGit-Setup", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	flags.BoolVar(&options.silent, "silent", false, "não mostra perguntas")
+	flags.BoolVar(&options.autoUpdate, "auto-update", false, "uso interno: atualiza sem substituir o launcher em execução")
 	flags.StringVar(&options.installDir, "install-dir", installDir, "diretório do componente Git")
 	flags.StringVar(&options.sharedHome, "shared-home", sharedHome, "diretório compartilhado do Zyr CLI")
 	flags.BoolVar(&options.noPath, "no-path", false, "não altera o PATH")
@@ -163,7 +167,7 @@ func cleanAbsoluteDirectory(directory string) (string, error) {
 }
 
 func install(options setupOptions) error {
-	if len(launcherPayload) == 0 || len(gitComponentPayload) == 0 {
+	if len(launcherPayload) == 0 || len(gitComponentPayload) == 0 || len(dashboardPayload) == 0 || len(iconPayload) == 0 {
 		return errors.New("o instalador não contém todos os payloads; gere-o com scripts\\build.ps1")
 	}
 
@@ -172,8 +176,12 @@ func install(options setupOptions) error {
 	componentsDir := filepath.Join(options.sharedHome, "components")
 	manifestPath := filepath.Join(componentsDir, "git.json")
 	legacyPath := filepath.Join(options.sharedHome, "legacy.json")
-	componentPath := filepath.Join(options.installDir, "zyr-git-commit.exe")
-	oldMonolithPath := filepath.Join(options.installDir, "zyr.exe")
+	versionDir := filepath.Join(options.installDir, "versions", version)
+	componentPath := filepath.Join(versionDir, "zyr-git.exe")
+	dashboardPath := filepath.Join(versionDir, "zyr-git-dashboard.exe")
+	oldInstallDir := filepath.Join(filepath.Dir(options.installDir), oldProductName)
+	oldComponentPath := filepath.Join(oldInstallDir, "zyr-git-commit.exe")
+	oldMonolithPath := filepath.Join(oldInstallDir, "zyr.exe")
 	oldMonolithOwned := isOldGitCommitMonolith(oldMonolithPath)
 
 	existingZyr, err := findZyrOnPath()
@@ -195,10 +203,18 @@ func install(options setupOptions) error {
 	if err := verifyOwnedExecutable(launcherPath, "--zyr-launcher-protocol", launcher.Protocol); err != nil {
 		return err
 	}
+	if options.autoUpdate {
+		if _, err := os.Stat(launcherPath); err != nil {
+			return fmt.Errorf("o launcher Zyr não está instalado: %w", err)
+		}
+	}
 	if err := verifyOwnedExecutable(componentPath, "--zyr-component-protocol", componentProtocol); err != nil {
 		return err
 	}
-	if err := verifyOwnedGitManifest(manifestPath, componentPath); err != nil {
+	if err := verifyOwnedExecutable(dashboardPath, "--zyr-ui-protocol", "zyr-git-ui/1"); err != nil {
+		return err
+	}
+	if err := verifyOwnedGitManifest(manifestPath, options.installDir); err != nil {
 		return err
 	}
 	if err := ensureNoGitManifestConflict(componentsDir, manifestPath); err != nil {
@@ -230,16 +246,24 @@ func install(options setupOptions) error {
 		fmt.Printf("Componente Git: %s\n", options.installDir)
 		fmt.Printf("Launcher compartilhado: %s\n", options.sharedHome)
 	}
-	for _, directory := range []string{options.installDir, launcherDir, componentsDir} {
+	for _, directory := range []string{options.installDir, versionDir, launcherDir, componentsDir} {
 		if err := os.MkdirAll(directory, 0o755); err != nil {
 			return fmt.Errorf("não foi possível criar %s: %w", directory, err)
 		}
 	}
-	if err := os.WriteFile(launcherPath, launcherPayload, 0o755); err != nil {
-		return fmt.Errorf("não foi possível instalar o launcher Zyr: %w", err)
+	if !options.autoUpdate {
+		if err := os.WriteFile(launcherPath, launcherPayload, 0o755); err != nil {
+			return fmt.Errorf("não foi possível instalar o launcher Zyr: %w", err)
+		}
 	}
 	if err := os.WriteFile(componentPath, gitComponentPayload, 0o755); err != nil {
 		return fmt.Errorf("não foi possível instalar o componente Git: %w", err)
+	}
+	if err := os.WriteFile(dashboardPath, dashboardPayload, 0o755); err != nil {
+		return fmt.Errorf("não foi possível instalar o dashboard: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(options.installDir, "zyr-git.ico"), iconPayload, 0o644); err != nil {
+		return fmt.Errorf("não foi possível instalar o ícone: %w", err)
 	}
 
 	manifest := launcher.Component{
@@ -247,8 +271,12 @@ func install(options setupOptions) error {
 		Command:       "git",
 		Executable:    componentPath,
 		Version:       version,
-		Description:   "Cria commits e gerencia repositórios e históricos Git",
+		InstalledAt:   time.Now().Format(time.RFC3339),
+		Description:   "Gerencia commits, repositórios e históricos Git",
 		Owner:         productName,
+	}
+	if err := createDashboardShortcut(dashboardPath, options.sharedHome); err != nil {
+		return fmt.Errorf("não foi possível criar o atalho do dashboard: %w", err)
 	}
 	if err := writeJSON(manifestPath, manifest); err != nil {
 		return fmt.Errorf("não foi possível registrar o componente Git: %w", err)
@@ -279,6 +307,11 @@ func install(options setupOptions) error {
 	if oldMonolithOwned {
 		_ = os.Remove(oldMonolithPath)
 	}
+	if err := verifyOwnedExecutable(oldComponentPath, "--zyr-component-protocol", componentProtocol); err == nil {
+		_ = os.Remove(oldComponentPath)
+		_ = os.Remove(filepath.Join(oldInstallDir, "uninstall.exe"))
+		_ = os.Remove(oldInstallDir)
+	}
 	if !options.noPath {
 		removeFromPath := ""
 		if oldMonolithOwned {
@@ -289,20 +322,21 @@ func install(options setupOptions) error {
 		}
 	}
 	if !options.noRegistry {
-		size := int64(len(launcherPayload) + len(gitComponentPayload))
-		if err := registerUninstaller(options, componentPath, uninstallerPath, size); err != nil {
+		size := int64(len(launcherPayload) + len(gitComponentPayload) + len(dashboardPayload))
+		if err := registerUninstaller(options, filepath.Join(options.installDir, "zyr-git.ico"), uninstallerPath, size); err != nil {
 			return fmt.Errorf("o componente foi instalado, mas não pôde ser registrado para desinstalação: %w", err)
 		}
+		_ = runReg("delete", oldUninstallKey, "/f")
 	}
 	notifyEnvironmentChanged()
 	if !options.silent {
 		switch state.Mode {
 		case modeUpdate:
-			fmt.Println("✓ Atualização do Zyr Git Commit concluída com sucesso.")
+			fmt.Println("✓ Atualização do Zyr Git concluída com sucesso.")
 		case modeRepair:
-			fmt.Println("✓ Reparo do Zyr Git Commit concluído com sucesso.")
+			fmt.Println("✓ Reparo do Zyr Git concluído com sucesso.")
 		default:
-			fmt.Println("✓ Instalação do Zyr Git Commit concluída com sucesso.")
+			fmt.Println("✓ Instalação do Zyr Git concluída com sucesso.")
 		}
 		fmt.Println("Abra um novo terminal e execute: zyr --help")
 	}
@@ -342,11 +376,11 @@ func showSetupNotice(options setupOptions, state setupState, input io.Reader, ou
 	if options.silent {
 		switch state.Mode {
 		case modeInstall:
-			fmt.Fprintf(output, "ℹ Instalação silenciosa do Zyr Git Commit %s.\n", state.TargetVersion)
+			fmt.Fprintf(output, "ℹ Instalação silenciosa do Zyr Git %s.\n", state.TargetVersion)
 		case modeUpdate:
-			fmt.Fprintf(output, "ℹ Atualização silenciosa do Zyr Git Commit: %s → %s.\n", state.InstalledVersion, state.TargetVersion)
+			fmt.Fprintf(output, "ℹ Atualização silenciosa do Zyr Git: %s → %s.\n", state.InstalledVersion, state.TargetVersion)
 		case modeRepair:
-			fmt.Fprintf(output, "ℹ Reparo silencioso do Zyr Git Commit %s.\n", state.TargetVersion)
+			fmt.Fprintf(output, "ℹ Reparo silencioso do Zyr Git %s.\n", state.TargetVersion)
 		}
 		return true, nil
 	}
@@ -354,15 +388,15 @@ func showSetupNotice(options setupOptions, state setupState, input io.Reader, ou
 	fmt.Fprintln(output)
 	switch state.Mode {
 	case modeInstall:
-		fmt.Fprintln(output, "=== INSTALAÇÃO DO ZYR GIT COMMIT ===")
-		fmt.Fprintf(output, "O Zyr Git Commit %s será instalado nesta máquina.\n", state.TargetVersion)
+		fmt.Fprintln(output, "=== INSTALAÇÃO DO ZYR GIT ===")
+		fmt.Fprintf(output, "O Zyr Git %s será instalado nesta máquina.\n", state.TargetVersion)
 	case modeUpdate:
-		fmt.Fprintln(output, "=== ATUALIZAÇÃO DO ZYR GIT COMMIT ===")
+		fmt.Fprintln(output, "=== ATUALIZAÇÃO DO ZYR GIT ===")
 		fmt.Fprintf(output, "Versão instalada: %s\n", state.InstalledVersion)
 		fmt.Fprintf(output, "Nova versão:       %s\n", state.TargetVersion)
 		fmt.Fprintln(output, "O launcher, o componente Git e o manifesto serão atualizados.")
 	case modeRepair:
-		fmt.Fprintln(output, "=== REPARO DO ZYR GIT COMMIT ===")
+		fmt.Fprintln(output, "=== REPARO DO ZYR GIT ===")
 		fmt.Fprintf(output, "A versão %s já está instalada.\n", state.TargetVersion)
 		fmt.Fprintln(output, "O instalador irá restaurar o launcher, o componente Git,")
 		fmt.Fprintln(output, "o manifesto e a configuração do PATH deste produto.")
@@ -417,7 +451,7 @@ func uninstall(options setupOptions) error {
 	launcherDir := filepath.Join(options.sharedHome, "bin")
 	componentsDir := filepath.Join(options.sharedHome, "components")
 	manifestPath := filepath.Join(componentsDir, "git.json")
-	componentPath := filepath.Join(options.installDir, "zyr-git-commit.exe")
+	componentPath := filepath.Join(options.installDir, "versions", version, "zyr-git.exe")
 	if err := verifyOwnedExecutable(componentPath, "--zyr-component-protocol", componentProtocol); err != nil {
 		return err
 	}
@@ -431,10 +465,12 @@ func uninstall(options setupOptions) error {
 			return err
 		}
 	}
-	if err := removeOwnedGitManifest(manifestPath, componentPath); err != nil {
+	if err := removeOwnedGitManifest(manifestPath, options.installDir); err != nil {
 		return err
 	}
-	_ = os.Remove(componentPath)
+	_ = os.RemoveAll(filepath.Join(options.installDir, "versions"))
+	_ = os.Remove(dashboardShortcutPath())
+	_ = os.Remove(filepath.Join(options.installDir, "zyr-git.ico"))
 
 	otherComponents, err := componentManifestCount(componentsDir)
 	if err != nil {
@@ -460,7 +496,7 @@ func uninstall(options setupOptions) error {
 		return fmt.Errorf("o componente foi removido, mas o desinstalador não pôde limpar seus arquivos: %w", err)
 	}
 	if !options.silent {
-		fmt.Println("✓ Componente Zyr Git Commit desinstalado.")
+		fmt.Println("✓ Zyr Git desinstalado.")
 	}
 	return nil
 }
@@ -488,10 +524,10 @@ func isOldGitCommitMonolith(path string) bool {
 		return false
 	}
 	out, err := exec.Command(path, "--version").CombinedOutput()
-	return err == nil && strings.HasPrefix(strings.TrimSpace(string(out)), "Zyr Git Commit ")
+	return err == nil && strings.HasPrefix(strings.TrimSpace(string(out)), oldProductName+" ")
 }
 
-func verifyOwnedGitManifest(path, componentPath string) error {
+func verifyOwnedGitManifest(path, installDir string) error {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -500,14 +536,25 @@ func verifyOwnedGitManifest(path, componentPath string) error {
 		return err
 	}
 	var manifest launcher.Component
-	if json.Unmarshal(data, &manifest) != nil || !strings.EqualFold(manifest.Command, "git") || manifest.Owner != productName || !samePath(manifest.Executable, componentPath) {
+	if json.Unmarshal(data, &manifest) != nil || !strings.EqualFold(manifest.Command, "git") {
 		return fmt.Errorf("um manifesto do comando 'git' não pertencente a este produto já existe em %s; ele não será sobrescrito", path)
+	}
+	currentVersions := filepath.Join(installDir, "versions")
+	relative, relErr := filepath.Rel(currentVersions, manifest.Executable)
+	currentOwned := manifest.Owner == productName && relErr == nil && relative != "." && relative != ".." && !strings.HasPrefix(relative, ".."+string(os.PathSeparator)) && filepath.Base(manifest.Executable) == "zyr-git.exe"
+	oldPath := filepath.Join(filepath.Dir(installDir), oldProductName, "zyr-git-commit.exe")
+	oldOwned := manifest.Owner == oldProductName && samePath(manifest.Executable, oldPath)
+	if !currentOwned && !oldOwned {
+		return fmt.Errorf("um manifesto do comando 'git' não pertencente a este produto já existe em %s; ele não será sobrescrito", path)
+	}
+	if err := verifyOwnedExecutable(manifest.Executable, "--zyr-component-protocol", componentProtocol); err != nil {
+		return err
 	}
 	return nil
 }
 
-func removeOwnedGitManifest(path, componentPath string) error {
-	if err := verifyOwnedGitManifest(path, componentPath); err != nil {
+func removeOwnedGitManifest(path, installDir string) error {
+	if err := verifyOwnedGitManifest(path, installDir); err != nil {
 		return err
 	}
 	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -678,7 +725,44 @@ func writeJSON(path string, value interface{}) error {
 		return err
 	}
 	data = append(data, '\n')
-	return os.WriteFile(path, data, 0o600)
+	temporary := path + ".tmp"
+	if err := os.WriteFile(temporary, data, 0o600); err != nil {
+		return err
+	}
+	if err := os.Rename(temporary, path); err != nil {
+		_ = os.Remove(temporary)
+		return err
+	}
+	return nil
+}
+
+func dashboardShortcutPath() string {
+	base := os.Getenv("APPDATA")
+	if base == "" {
+		base, _ = os.UserConfigDir()
+	}
+	if base == "" {
+		return ""
+	}
+	return filepath.Join(base, "Microsoft", "Windows", "Start Menu", "Programs", "Zyr Git.lnk")
+}
+
+func createDashboardShortcut(target, sharedHome string) error {
+	shortcut := dashboardShortcutPath()
+	if shortcut == "" {
+		return errors.New("não foi possível localizar o menu Iniciar")
+	}
+	if err := os.MkdirAll(filepath.Dir(shortcut), 0o755); err != nil {
+		return err
+	}
+	const script = `$link=(New-Object -ComObject WScript.Shell).CreateShortcut($env:ZYR_GIT_SHORTCUT);$link.TargetPath=$env:ZYR_GIT_TARGET;$link.Arguments='--shared-home "'+$env:ZYR_GIT_HOME+'"';$link.WorkingDirectory=[IO.Path]::GetDirectoryName($env:ZYR_GIT_TARGET);$link.IconLocation=$env:ZYR_GIT_ICON;$link.Description='Zyr Git';$link.Save()`
+	cmd := exec.Command("powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-EncodedCommand", encodePowerShell(script))
+	cmd.Env = append(os.Environ(), "ZYR_GIT_SHORTCUT="+shortcut, "ZYR_GIT_TARGET="+target, "ZYR_GIT_HOME="+sharedHome, "ZYR_GIT_ICON="+filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(target))), "zyr-git.ico"))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("atalho do menu Iniciar: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
 }
 
 func componentManifestCount(directory string) (int, error) {
@@ -703,7 +787,7 @@ func launchUninstallFinalizer(installDir string) error {
 	if err != nil {
 		return err
 	}
-	temporary := filepath.Join(os.TempDir(), "zyr-git-commit-uninstall-"+strconv.Itoa(os.Getpid())+".exe")
+	temporary := filepath.Join(os.TempDir(), "zyr-git-uninstall-"+strconv.Itoa(os.Getpid())+".exe")
 	bytes, err := os.ReadFile(current)
 	if err != nil {
 		return err
@@ -728,7 +812,7 @@ func finishUninstall(installDir string, parentPID int) {
 	} else {
 		time.Sleep(750 * time.Millisecond)
 	}
-	_ = os.Remove(filepath.Join(installDir, "zyr-git-commit.exe"))
+	_ = os.RemoveAll(filepath.Join(installDir, "versions"))
 	_ = os.Remove(filepath.Join(installDir, "uninstall.exe"))
 	_ = os.Remove(installDir)
 	if current, executableErr := os.Executable(); executableErr == nil {
@@ -739,7 +823,7 @@ func finishUninstall(installDir string, parentPID int) {
 	}
 }
 
-func registerUninstaller(options setupOptions, componentPath, uninstallerPath string, payloadSize int64) error {
+func registerUninstaller(options setupOptions, iconPath, uninstallerPath string, payloadSize int64) error {
 	baseArgs := fmt.Sprintf("--uninstall --install-dir \"%s\" --shared-home \"%s\"", options.installDir, options.sharedHome)
 	values := []struct {
 		name, kind, value string
@@ -748,7 +832,7 @@ func registerUninstaller(options setupOptions, componentPath, uninstallerPath st
 		{"DisplayVersion", "REG_SZ", version},
 		{"Publisher", "REG_SZ", publisher},
 		{"InstallLocation", "REG_SZ", options.installDir},
-		{"DisplayIcon", "REG_SZ", componentPath},
+		{"DisplayIcon", "REG_SZ", iconPath},
 		{"UninstallString", "REG_SZ", fmt.Sprintf("\"%s\" %s", uninstallerPath, baseArgs)},
 		{"QuietUninstallString", "REG_SZ", fmt.Sprintf("\"%s\" %s --silent", uninstallerPath, baseArgs)},
 		{"NoModify", "REG_DWORD", "1"},
@@ -947,7 +1031,7 @@ func launchDelayedSelfDelete(path string) bool {
 	if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(os.PathSeparator)) {
 		return false
 	}
-	if !strings.HasPrefix(strings.ToLower(filepath.Base(target)), "zyr-git-commit-uninstall-") {
+	if !strings.HasPrefix(strings.ToLower(filepath.Base(target)), "zyr-git-uninstall-") {
 		return false
 	}
 	const script = `$target=$env:ZYR_DELETE_TARGET;for($i=0;$i -lt 20 -and [IO.File]::Exists($target);$i++){Start-Sleep -Milliseconds 250;try{[IO.File]::Delete($target)}catch{}}`

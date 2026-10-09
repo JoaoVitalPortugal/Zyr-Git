@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	githubclient "github.com/JoaoVitalPortugal/zyr-git-commit/internal/github"
+	githubclient "github.com/JoaoVitalPortugal/zyr-git/internal/github"
 )
 
 type fakeRepositoryCreator struct {

@@ -1,6 +1,6 @@
 package gitignore
 
-const Template = `# Zyr Git Commit - generic .gitignore
+const Template = `# Zyr Git - generic .gitignore
 # Keep intentional project files tracked; adjust this file for your stack.
 
 # Operating systems

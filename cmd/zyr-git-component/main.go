@@ -2,18 +2,22 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 
-	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/app"
-	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/command"
-	gitclient "github.com/JoaoVitalPortugal/zyr-git-commit/internal/git"
-	githubclient "github.com/JoaoVitalPortugal/zyr-git-commit/internal/github"
-	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/gitignore"
-	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/platform"
-	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/state"
-	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/terminal"
+	"github.com/JoaoVitalPortugal/zyr-git/internal/app"
+	"github.com/JoaoVitalPortugal/zyr-git/internal/command"
+	gitclient "github.com/JoaoVitalPortugal/zyr-git/internal/git"
+	githubclient "github.com/JoaoVitalPortugal/zyr-git/internal/github"
+	"github.com/JoaoVitalPortugal/zyr-git/internal/gitignore"
+	"github.com/JoaoVitalPortugal/zyr-git/internal/platform"
+	"github.com/JoaoVitalPortugal/zyr-git/internal/state"
+	"github.com/JoaoVitalPortugal/zyr-git/internal/terminal"
 )
 
 const componentProtocol = "zyr-component/git/1"
@@ -26,8 +30,13 @@ func main() {
 		fmt.Fprintln(os.Stdout, componentProtocol)
 		return
 	}
+	if os.Getenv("ZYR_GIT_UPDATE_RESUME") != "1" {
+		if code, handled := checkAndResume(args); handled {
+			os.Exit(code)
+		}
+	}
 	if len(args) == 1 && (args[0] == "--version" || args[0] == "version") {
-		fmt.Fprintf(os.Stdout, "Zyr Git Commit %s\n", version)
+		fmt.Fprintf(os.Stdout, "Zyr Git %s\n", version)
 		return
 	}
 	if len(args) == 0 || (len(args) == 1 && (args[0] == "--help" || args[0] == "help")) {
@@ -79,6 +88,51 @@ func main() {
 		ui.Error(runError.Error())
 		os.Exit(1)
 	}
+}
+
+func checkAndResume(args []string) (int, bool) {
+	self, err := os.Executable()
+	if err != nil {
+		return 0, false
+	}
+	uiPath := filepath.Join(filepath.Dir(self), "zyr-git-dashboard.exe")
+	if _, err := os.Stat(uiPath); err != nil {
+		return 0, false
+	}
+	check := exec.Command(uiPath, "--check-and-update")
+	err = check.Run()
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != 10 {
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Aviso: não foi possível verificar ou instalar a atualização; continuando com a versão atual.")
+		}
+		return 0, false
+	}
+	home := os.Getenv("ZYR_CLI_HOME")
+	if home == "" {
+		home = filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs", "Zyr CLI")
+	}
+	data, err := os.ReadFile(filepath.Join(home, "components", "git.json"))
+	if err != nil {
+		return 0, false
+	}
+	var manifest struct {
+		Executable string `json:"executable"`
+	}
+	if json.Unmarshal(data, &manifest) != nil || manifest.Executable == "" || manifest.Executable == self {
+		return 0, false
+	}
+	command := exec.Command(manifest.Executable, args...)
+	command.Env = append(os.Environ(), "ZYR_GIT_UPDATE_RESUME=1")
+	command.Stdin, command.Stdout, command.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := command.Run(); err != nil {
+		if errors.As(err, &exit) {
+			return exit.ExitCode(), true
+		}
+		fmt.Fprintln(os.Stderr, "Falha ao retomar o comando após a atualização:", err)
+		return 1, true
+	}
+	return 0, true
 }
 
 func printHelp() {

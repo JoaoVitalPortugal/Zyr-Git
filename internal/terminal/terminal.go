@@ -24,7 +24,7 @@ func (t *Terminal) Banner() {
      / /__       \  /    | | \ \
     /_____|       \/     |_|  \_\`)
 	fmt.Fprintln(t.out)
-	fmt.Fprintln(t.out, "    Zyr Git Commit")
+	fmt.Fprintln(t.out, "    Zyr Git")
 	fmt.Fprintln(t.out)
 }
 
