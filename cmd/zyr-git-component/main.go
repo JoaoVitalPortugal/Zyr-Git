@@ -34,7 +34,7 @@ func main() {
 		printHelp()
 		return
 	}
-	if len(args) != 1 || (args[0] != "commit" && args[0] != "reset-history" && args[0] != "add-repo" && args[0] != "delete-repo") {
+	if len(args) != 1 || (args[0] != "commit" && args[0] != "reset-history" && args[0] != "add-repo" && args[0] != "delete-repo" && args[0] != "update-gh") {
 		fmt.Fprintln(os.Stderr, "✕ Comando Git desconhecido.")
 		printHelp()
 		os.Exit(2)
@@ -68,6 +68,12 @@ func main() {
 			Installer: platform.NewGitHubCLIInstaller(runtime.GOOS, executor),
 			UI:        ui,
 		}).Run(context.Background())
+	case "update-gh":
+		runError = (app.UpdateGHApplication{
+			GitHub:    githubclient.New(executor),
+			Installer: platform.NewGitHubCLIInstaller(runtime.GOOS, executor),
+			UI:        ui,
+		}).Run(context.Background())
 	}
 	if runError != nil {
 		ui.Error(runError.Error())
@@ -83,6 +89,7 @@ func printHelp() {
 	fmt.Fprintln(os.Stdout, "  reset-history   Substitui o histórico por um novo commit inicial")
 	fmt.Fprintln(os.Stdout, "  add-repo        Cria um novo repositório remoto no GitHub")
 	fmt.Fprintln(os.Stdout, "  delete-repo     Exclui permanentemente um repositório remoto do GitHub")
+	fmt.Fprintln(os.Stdout, "  update-gh       Atualiza o GitHub CLI (gh) no Windows")
 	fmt.Fprintln(os.Stdout)
 	fmt.Fprintln(os.Stdout, "Execute: zyr git <comando>")
 }

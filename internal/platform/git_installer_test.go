@@ -92,3 +92,33 @@ func TestGitHubCLIAutomaticInstallationIsWindowsOnly(t *testing.T) {
 		t.Fatalf("non-Windows installation should be manual: err=%v commands=%v", err, executor.interactive)
 	}
 }
+
+func TestWindowsGitHubCLIUpdateUsesItsPackageManager(t *testing.T) {
+	tests := []struct {
+		name  string
+		paths map[string]string
+		want  []string
+	}{
+		{"winget", map[string]string{"gh": `C:\Program Files\GitHub CLI\gh.exe`, "winget": `C:\winget.exe`}, []string{"upgrade", "--id", "GitHub.cli", "-e", "--source", "winget", "--accept-package-agreements", "--accept-source-agreements"}},
+		{"chocolatey", map[string]string{"gh": `C:\ProgramData\chocolatey\bin\gh.exe`, "choco": `C:\choco.exe`}, []string{"upgrade", "gh", "-y"}},
+		{"scoop", map[string]string{"gh": `C:\Users\Ana\scoop\shims\gh.exe`, "scoop": `C:\scoop.cmd`}, []string{"update", "gh"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			executor := &fakeExecutor{paths: tt.paths}
+			if err := NewGitHubCLIInstaller("windows", executor).UpdateGitHubCLI(); err != nil {
+				t.Fatal(err)
+			}
+			if len(executor.args) != 1 || !reflect.DeepEqual(executor.args[0], tt.want) {
+				t.Fatalf("unexpected GitHub CLI update: %v %v", executor.interactive, executor.args)
+			}
+		})
+	}
+}
+
+func TestGitHubCLIUpdateDoesNotInstallAnotherCopyWhenManagerIsUnknown(t *testing.T) {
+	executor := &fakeExecutor{paths: map[string]string{"gh": `C:\Program Files\GitHub CLI\gh.exe`}}
+	if err := NewGitHubCLIInstaller("windows", executor).UpdateGitHubCLI(); err == nil || len(executor.interactive) != 0 {
+		t.Fatalf("expected a manual update hint without running a package manager: %v %v", err, executor.interactive)
+	}
+}

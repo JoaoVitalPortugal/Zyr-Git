@@ -9,6 +9,19 @@ installer/payload/zyr-git-commit.exe
 # Local editor and OS files
 .idea/
 .vscode/
+.vscode-test/
+.history/
 .DS_Store
 Thumbs.db
-reset_repo.bat 
+
+# Local settings and generated test output
+.env
+.env.*
+!.env.example
+!.env.sample
+*.log
+*.tmp
+*.bak
+coverage.out
+*.test
+reset_repo.bat

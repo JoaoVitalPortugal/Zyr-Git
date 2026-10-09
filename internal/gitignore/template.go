@@ -18,11 +18,9 @@ $RECYCLE.BIN/
 *~
 .idea/
 .vs/
-.vscode/*
-!.vscode/extensions.json
-!.vscode/launch.json
-!.vscode/settings.json
-!.vscode/tasks.json
+.vscode/
+.vscode-test/
+.history/
 *.suo
 *.user
 *.userosscache
@@ -44,6 +42,7 @@ $RECYCLE.BIN/
 logs/
 *.tmp
 *.temp
+*.bak
 .cache/
 .sass-cache/
 

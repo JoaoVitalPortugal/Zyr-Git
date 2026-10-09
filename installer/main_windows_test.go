@@ -171,7 +171,8 @@ func TestDelayedDeleteRemovesValidatedTemporaryFile(t *testing.T) {
 	if !launchDelayedSelfDelete(path) {
 		t.Fatal("failed to launch delayed delete")
 	}
-	deadline := time.Now().Add(5 * time.Second)
+	// PowerShell startup can take several seconds on a busy Windows host.
+	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			return

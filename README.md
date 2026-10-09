@@ -31,7 +31,7 @@ zyr git commit
 
 Na primeira execução, o Zyr verifica o Git, a identidade do usuário, o repositório local e o remote `origin`. Se o Git não estiver instalado, ele pode instalar após sua confirmação.
 
-Quando não existe um `.gitignore`, o Zyr cria um modelo genérico automaticamente. Um arquivo já existente nunca é alterado.
+Quando não existe um `.gitignore`, o Zyr cria um modelo genérico automaticamente, que ignora a pasta `.vscode/` por completo. Um arquivo já existente nunca é alterado; se ele foi criado por uma versão anterior, adicione `.vscode/` manualmente para ignorar as configurações do editor.
 
 Depois da configuração inicial, basta informar a mensagem do commit. O programa executa o equivalente a:
 
@@ -80,6 +80,10 @@ Se o GitHub CLI não estiver instalado no Windows, o Zyr pode instalá-lo após 
 Antes de mostrar os repositórios, o Zyr também verifica a permissão `delete_repo`. Quando ela não existe, explica o que ela permite, pede sua confirmação e abre o fluxo oficial do GitHub para autorizá-la. O comando só continua depois de confirmar o login e a permissão.
 
 Você não precisa executar nenhum comando do `gh` manualmente. Basta iniciar `zyr git delete-repo` e responder às confirmações exibidas pelo Zyr.
+
+## Atualizar o GitHub CLI
+
+No Windows, execute `zyr git update-gh` para atualizar o `gh`. O Zyr mostra a versão instalada, pede confirmação e usa o gerenciador de pacotes associado à instalação (WinGet, Chocolatey ou Scoop). Se o `gh` ainda não estiver instalado, o comando pode instalá-lo. Essa atualização é independente de `zyr git reset-history`.
 
 ## GitHub
 

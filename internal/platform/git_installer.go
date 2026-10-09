@@ -2,6 +2,7 @@ package platform
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/JoaoVitalPortugal/zyr-git-commit/internal/command"
@@ -41,6 +42,32 @@ func (i *GitHubCLIInstaller) InstallGitHubCLI() error {
 	return fmt.Errorf("nenhum instalador compatível foi encontrado (winget, Chocolatey ou Scoop); instale o GitHub CLI por https://cli.github.com")
 }
 
+func (i *GitHubCLIInstaller) UpdateGitHubCLI() error {
+	if i.osName != "windows" {
+		return fmt.Errorf("a atualização automática do GitHub CLI está disponível apenas no Windows; consulte https://cli.github.com")
+	}
+	ghPath, err := i.executor.LookPath("gh")
+	if err != nil {
+		return fmt.Errorf("GitHub CLI não encontrado; instale-o antes de atualizar")
+	}
+	path := strings.ToLower(filepath.ToSlash(ghPath))
+	switch {
+	case strings.Contains(path, "/scoop/apps/gh/"), strings.Contains(path, "/scoop/shims/"):
+		if scoop, ok := find(i.executor, "scoop"); ok {
+			return run(i.executor, scoop, "update", "gh")
+		}
+	case strings.Contains(path, "/chocolatey/bin/"):
+		if choco, ok := find(i.executor, "choco"); ok {
+			return run(i.executor, choco, "upgrade", "gh", "-y")
+		}
+	default:
+		if winget, ok := find(i.executor, "winget"); ok {
+			return run(i.executor, winget, "upgrade", "--id", "GitHub.cli", "-e", "--source", "winget", "--accept-package-agreements", "--accept-source-agreements")
+		}
+	}
+	return fmt.Errorf("não foi possível identificar o gerenciador usado para instalar o GitHub CLI; atualize-o pelo mesmo gerenciador ou consulte https://cli.github.com")
+}
+
 func find(executor command.Executor, name string) (string, bool) {
 	path, err := executor.LookPath(name)
 	return path, err == nil
@@ -48,7 +75,7 @@ func find(executor command.Executor, name string) (string, bool) {
 
 func run(executor command.Executor, name string, args ...string) error {
 	if err := executor.Interactive(name, args...); err != nil {
-		return fmt.Errorf("o comando de instalação falhou: %w", err)
+		return fmt.Errorf("o comando do gerenciador de pacotes falhou: %w", err)
 	}
 	return nil
 }

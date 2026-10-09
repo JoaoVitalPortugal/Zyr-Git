@@ -18,10 +18,13 @@ func TestEnsureCreatesGenericTemplateOnlyOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, expected := range []string{"node_modules/", "__pycache__/", ".gradle/", "CMakeFiles/", ".terraform/"} {
+	for _, expected := range []string{".vscode/", ".vscode-test/", ".history/", "node_modules/", "__pycache__/", ".gradle/", "CMakeFiles/", ".terraform/"} {
 		if !strings.Contains(string(data), expected) {
 			t.Fatalf("generic template is missing %q", expected)
 		}
+	}
+	if strings.Contains(string(data), "!.vscode/") {
+		t.Fatal("generated template must ignore all VS Code settings")
 	}
 	created, err = manager.Ensure()
 	if err != nil || created {
