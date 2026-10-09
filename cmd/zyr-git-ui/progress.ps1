@@ -17,11 +17,14 @@ if (Test-Path -LiteralPath $env:ZYR_GIT_ICON) { $window.Icon = [Windows.Media.Im
 $versionText = $window.FindName('VersionText')
 $stageText = $window.FindName('StageText')
 $bar = $window.FindName('Progress')
+function Read-ProgressState {
+  Get-Content -LiteralPath $env:ZYR_GIT_PROGRESS_FILE -Raw -Encoding UTF8 | ConvertFrom-Json
+}
 $timer = New-Object Windows.Threading.DispatcherTimer
 $timer.Interval = [TimeSpan]::FromMilliseconds(180)
 $timer.Add_Tick({
   try {
-    $state = Get-Content -LiteralPath $env:ZYR_GIT_PROGRESS_FILE -Raw | ConvertFrom-Json
+    $state = Read-ProgressState
     $versionText.Text = 'Atualizando para ' + $state.version
     $stageText.Text = $state.stage
     $bar.IsIndeterminate = ($state.percent -lt 0)
@@ -39,6 +42,12 @@ $timer.Add_Tick({
 $timer.Start()
 if ($env:ZYR_GIT_UI_SCREENSHOT) {
   $window.Add_ContentRendered({
+    $state = Read-ProgressState
+    $versionText.Text = 'Atualizando para ' + $state.version
+    $stageText.Text = $state.stage
+    $bar.IsIndeterminate = ($state.percent -lt 0)
+    if ($state.percent -ge 0) { $bar.Value = $state.percent }
+    $window.UpdateLayout()
     $width = [int]$window.Content.ActualWidth
     $height = [int]$window.Content.ActualHeight
     $bitmap = New-Object Windows.Media.Imaging.RenderTargetBitmap($width,$height,96,96,[Windows.Media.PixelFormats]::Pbgra32)

@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName PresentationFramework
-$data = Get-Content -LiteralPath $env:ZYR_GIT_DASHBOARD_FILE -Raw | ConvertFrom-Json
+$data = Get-Content -LiteralPath $env:ZYR_GIT_DASHBOARD_FILE -Raw -Encoding UTF8 | ConvertFrom-Json
 $xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Zyr Git" Width="1040" Height="720" MinWidth="800" MinHeight="540" WindowStartupLocation="CenterScreen" Background="#0B1020" Foreground="#E6EDF7" FontFamily="Segoe UI">
   <Window.Resources>

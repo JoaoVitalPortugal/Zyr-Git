@@ -129,4 +129,4 @@ dist/ZyrGit-Setup.exe
 
 ## Publicar uma versão
 
-Atualize `VERSION` e envie uma tag correspondente, por exemplo `v0.7.0`. O workflow de release executa os testes no Windows, compila o instalador e publica `ZyrGit-Setup.exe` e `SHA256SUMS.txt` nas Releases do repositório. O atualizador automático usa apenas a Release estável mais recente com o instalador e digest SHA-256 disponíveis. A primeira versão com atualização automática precisa ser instalada manualmente uma vez.
+Atualize `VERSION` e envie uma tag correspondente, por exemplo `v0.7.1`. O workflow de release executa os testes no Windows, compila o instalador e publica `ZyrGit-Setup.exe` e `SHA256SUMS.txt` nas Releases do repositório. O atualizador automático usa apenas a Release estável mais recente com o instalador e digest SHA-256 disponíveis. A primeira versão com atualização automática precisa ser instalada manualmente uma vez.
