@@ -22,6 +22,7 @@ const (
 	releasesURL = "https://api.github.com/repos/JoaoVitalPortugal/Zyr-Git/releases/latest"
 	assetName   = "ZyrGit-Setup.exe"
 	maxSize     = 200 << 20
+	cacheTTL    = time.Minute
 )
 
 type Release struct {
@@ -62,10 +63,9 @@ func (c *Client) Check(ctx context.Context, current string) (Release, bool, erro
 	if data, err := os.ReadFile(c.CachePath); err == nil {
 		_ = json.Unmarshal(data, &cached)
 	}
-	if time.Since(cached.CheckedAt) >= 0 && time.Since(cached.CheckedAt) < 10*time.Minute {
+	if age := time.Since(cached.CheckedAt); age >= 0 && age < cacheTTL {
 		return cached.Release, newer(cached.Release.Version, current), nil
 	}
-
 	release, err := c.fetch(ctx)
 	if err != nil {
 		if cached.Release.Version != "" {

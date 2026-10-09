@@ -15,6 +15,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestVersionComparisonOnlyAcceptsNewerStableRelease(t *testing.T) {
@@ -114,30 +115,48 @@ func main() {
 	}
 }
 
-func TestCheckReadsReleaseAndUsesCache(t *testing.T) {
+func TestCheckRefreshesReleaseAfterShortCache(t *testing.T) {
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
+		version := "0.7.0"
+		if requests == 2 {
+			version = "0.7.1"
+		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"tag_name":     "v0.7.0",
+			"tag_name":     "v" + version,
 			"published_at": "2026-10-09T12:00:00Z",
 			"assets": []map[string]string{{
 				"name":                 assetName,
-				"browser_download_url": "https://github.com/JoaoVitalPortugal/Zyr-Git/releases/download/v0.7.0/ZyrGit-Setup.exe",
+				"browser_download_url": "https://github.com/JoaoVitalPortugal/Zyr-Git/releases/download/v" + version + "/ZyrGit-Setup.exe",
 				"digest":               "sha256:" + strings.Repeat("a", 64),
 			}},
 		})
 	}))
 	defer server.Close()
 	client := &Client{HTTP: server.Client(), URL: server.URL, CachePath: filepath.Join(t.TempDir(), "cache.json")}
-	for range 2 {
-		release, available, err := client.Check(context.Background(), "0.6.0")
-		if err != nil || !available || release.Version != "0.7.0" {
-			t.Fatalf("unexpected release: %+v %v %v", release, available, err)
-		}
+	release, available, err := client.Check(context.Background(), "0.6.0")
+	if err != nil || !available || release.Version != "0.7.0" {
+		t.Fatalf("unexpected initial release: %+v %v %v", release, available, err)
 	}
-	if requests != 1 {
-		t.Fatalf("expected one network request, got %d", requests)
+	release, available, err = client.Check(context.Background(), "0.6.0")
+	if err != nil || !available || release.Version != "0.7.0" || requests != 1 {
+		t.Fatalf("recent release was not cached: %+v %v %v; requests=%d", release, available, err, requests)
+	}
+	cache := cacheFile{CheckedAt: time.Now().Add(-2 * cacheTTL), Release: release}
+	data, err := json.Marshal(cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(client.CachePath, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	release, available, err = client.Check(context.Background(), "0.6.0")
+	if err != nil || !available || release.Version != "0.7.1" {
+		t.Fatalf("stale cache blocked the new release: %+v %v %v", release, available, err)
+	}
+	if requests != 2 {
+		t.Fatalf("expected two network requests, got %d", requests)
 	}
 }
 
