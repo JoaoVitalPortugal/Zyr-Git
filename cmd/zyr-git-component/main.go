@@ -43,7 +43,7 @@ func main() {
 		printHelp()
 		return
 	}
-	if len(args) != 1 || (args[0] != "commit" && args[0] != "reset-history" && args[0] != "add-repo" && args[0] != "delete-repo" && args[0] != "update-gh") {
+	if len(args) != 1 || (args[0] != "commit" && args[0] != "status" && args[0] != "reset-history" && args[0] != "add-repo" && args[0] != "delete-repo" && args[0] != "update-gh") {
 		fmt.Fprintln(os.Stderr, "✕ Comando Git desconhecido.")
 		printHelp()
 		os.Exit(2)
@@ -54,6 +54,8 @@ func main() {
 	git := gitclient.New(executor)
 	var runError error
 	switch args[0] {
+	case "status":
+		runError = (app.StatusApplication{Git: executor, Output: os.Stdout}).Run()
 	case "commit":
 		application := app.Application{
 			Git:       git,
@@ -140,6 +142,7 @@ func printHelp() {
 	fmt.Fprintln(os.Stdout)
 	fmt.Fprintln(os.Stdout, "Comandos:")
 	fmt.Fprintln(os.Stdout, "  commit          Adiciona alterações, cria um commit e faz push")
+	fmt.Fprintln(os.Stdout, "  status          Resume arquivos, branch e commits locais")
 	fmt.Fprintln(os.Stdout, "  reset-history   Substitui o histórico por um novo commit inicial")
 	fmt.Fprintln(os.Stdout, "  add-repo        Cria um novo repositório remoto no GitHub")
 	fmt.Fprintln(os.Stdout, "  delete-repo     Exclui permanentemente um repositório remoto do GitHub")

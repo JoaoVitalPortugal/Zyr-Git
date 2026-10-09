@@ -45,6 +45,16 @@ git push
 
 Se não houver alterações, ele encerra sem criar um commit vazio.
 
+## Consultar o status
+
+Na pasta do projeto, execute:
+
+```powershell
+zyr git status
+```
+
+O comando mostra a branch, os arquivos preparados, modificados, novos, excluídos ou em conflito, e a quantidade de commits para enviar ou receber. Ele não altera os arquivos nem executa `fetch`; a comparação com o upstream usa a última sincronização local do Git. Fora de um repositório, o Zyr informa o problema sem criar um projeto.
+
 ## Resetar o histórico
 
 Para substituir o histórico da branch atual por um único commit com o estado atual dos arquivos:
@@ -119,4 +129,4 @@ dist/ZyrGit-Setup.exe
 
 ## Publicar uma versão
 
-Atualize `VERSION` e envie uma tag correspondente, por exemplo `v0.6.2`. O workflow de release executa os testes no Windows, compila o instalador e publica `ZyrGit-Setup.exe` e `SHA256SUMS.txt` nas Releases do repositório. O atualizador automático usa apenas a Release estável mais recente com o instalador e digest SHA-256 disponíveis. A primeira versão com atualização automática precisa ser instalada manualmente uma vez.
+Atualize `VERSION` e envie uma tag correspondente, por exemplo `v0.7.0`. O workflow de release executa os testes no Windows, compila o instalador e publica `ZyrGit-Setup.exe` e `SHA256SUMS.txt` nas Releases do repositório. O atualizador automático usa apenas a Release estável mais recente com o instalador e digest SHA-256 disponíveis. A primeira versão com atualização automática precisa ser instalada manualmente uma vez.

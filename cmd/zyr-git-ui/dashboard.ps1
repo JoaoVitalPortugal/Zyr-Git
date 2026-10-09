@@ -64,7 +64,7 @@ $xaml = @'
           <StackPanel>
             <TextBlock Text="NAVEGAR" Foreground="#657795" FontSize="11" FontWeight="SemiBold" Margin="15,0,0,15"/>
             <Button Name="NavOverview" Content="Visão geral" Style="{StaticResource NavButton}" Foreground="#E6EDF7" Background="#192C49"/>
-            <Button Name="NavCommit" Content="Fazer commit" Style="{StaticResource NavButton}" Margin="0,3,0,0"/>
+            <Button Name="NavCommit" Content="Dia a dia" Style="{StaticResource NavButton}" Margin="0,3,0,0"/>
             <Button Name="NavGitHub" Content="Repositórios" Style="{StaticResource NavButton}" Margin="0,3,0,0"/>
             <Button Name="NavTools" Content="Manutenção" Style="{StaticResource NavButton}" Margin="0,3,0,0"/>
           </StackPanel>
@@ -115,6 +115,16 @@ $xaml = @'
             <Border Background="#182338" BorderBrush="#364567" BorderThickness="0,0,0,0" CornerRadius="6" Padding="12,10" Margin="0,20,0,0">
               <TextBlock Text="Antes de confirmar todos os arquivos, confira o .gitignore do projeto." Foreground="#C7D3E8" FontSize="13" TextWrapping="Wrap"/>
             </Border>
+            <Border Style="{StaticResource Rule}" Margin="0,29,0,22"/>
+            <TextBlock Text="Conferir o projeto" FontSize="19" FontWeight="SemiBold" Margin="0,0,0,13"/>
+            <Border Background="#111D33" BorderBrush="#2A3D5E" BorderThickness="1" CornerRadius="8" Padding="16,12">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock Text="zyr git status" Style="{StaticResource Command}" VerticalAlignment="Center"/>
+                <Button Name="CopyStatus" Grid.Column="1" Tag="zyr git status" Content="Copiar" Style="{StaticResource CopyButton}"/>
+              </Grid>
+            </Border>
+            <TextBlock Text="Mostra a branch, os arquivos alterados e os commits para enviar ou receber. A comparação usa a última sincronização local do Git; o comando não faz fetch." Style="{StaticResource Body}" Margin="0,12,0,0"/>
           </StackPanel>
 
           <StackPanel Name="SectionGitHub" Margin="0,54,0,0">
@@ -178,7 +188,7 @@ foreach ($item in @(
   $section = $window.FindName($item[1])
   $button.Add_Click({ $section.BringIntoView() }.GetNewClosure())
 }
-foreach ($name in @('CopyCommit', 'CopyAddRepo', 'CopyDeleteRepo', 'CopyReset', 'CopyUpdateGh')) {
+foreach ($name in @('CopyCommit', 'CopyStatus', 'CopyAddRepo', 'CopyDeleteRepo', 'CopyReset', 'CopyUpdateGh')) {
   $window.FindName($name).Add_Click({
     param($sender, $eventArgs)
     [Windows.Clipboard]::SetText([string]$sender.Tag)
