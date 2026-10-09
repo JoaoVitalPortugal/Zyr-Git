@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	_ "embed"
-	"encoding/base64"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -12,7 +10,6 @@ import (
 	"path/filepath"
 	"syscall"
 	"time"
-	"unicode/utf16"
 
 	"github.com/JoaoVitalPortugal/zyr-git/internal/selfupdate"
 )
@@ -77,7 +74,11 @@ func update(client *selfupdate.Client, release selfupdate.Release) error {
 		_ = os.WriteFile(path, data, 0o600)
 	}
 	writeState(progressState{Stage: "Preparando a atualização", Percent: -1, Version: release.Version})
-	window := powershell(progressScript, "ZYR_GIT_PROGRESS_FILE="+path)
+	window, cleanup, err := powershell(progressScript, "ZYR_GIT_PROGRESS_FILE="+path)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
 	if err := window.Start(); err != nil {
 		return err
 	}
@@ -126,19 +127,39 @@ func showDashboard(release selfupdate.Release) {
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return
 	}
-	_ = powershell(dashboardScript, "ZYR_GIT_DASHBOARD_FILE="+path).Run()
+	window, cleanup, err := powershell(dashboardScript, "ZYR_GIT_DASHBOARD_FILE="+path)
+	if err != nil {
+		return
+	}
+	defer cleanup()
+	_ = window.Run()
 }
 
-func powershell(script string, environment string) *exec.Cmd {
-	encoded := utf16.Encode([]rune(script))
-	bytes := make([]byte, len(encoded)*2)
-	for index, character := range encoded {
-		binary.LittleEndian.PutUint16(bytes[index*2:], character)
+func powershell(script string, environment string) (*exec.Cmd, func(), error) {
+	file, err := os.CreateTemp("", "zyr-git-ui-*.ps1")
+	if err != nil {
+		return nil, nil, err
 	}
-	cmd := exec.Command("powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-Sta", "-WindowStyle", "Hidden", "-EncodedCommand", base64.StdEncoding.EncodeToString(bytes))
+	path := file.Name()
+	cleanup := func() { _ = os.Remove(path) }
+	// Windows PowerShell 5.1 needs a BOM to read non-ASCII scripts as UTF-8.
+	if _, err := file.Write(append([]byte{0xEF, 0xBB, 0xBF}, []byte(script)...)); err != nil {
+		file.Close()
+		cleanup()
+		return nil, nil, err
+	}
+	if err := file.Close(); err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	cmd := exec.Command("powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-Sta", "-WindowStyle", "Hidden", "-File", path)
 	self, _ := os.Executable()
 	icon := filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(self))), "zyr-git.ico")
 	cmd.Env = append(os.Environ(), environment, "ZYR_GIT_ICON="+icon)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
-	return cmd
+	if os.Getenv("ZYR_GIT_UI_SMOKE") == "1" {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
+	return cmd, cleanup, nil
 }
