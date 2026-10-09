@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -262,8 +263,12 @@ func install(options setupOptions) error {
 	if err := os.WriteFile(dashboardPath, dashboardPayload, 0o755); err != nil {
 		return fmt.Errorf("não foi possível instalar o dashboard: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(options.installDir, "zyr-git.ico"), iconPayload, 0o644); err != nil {
-		return fmt.Errorf("não foi possível instalar o ícone: %w", err)
+	iconPath := filepath.Join(options.installDir, "zyr-git.ico")
+	installedIcon, iconReadErr := os.ReadFile(iconPath)
+	if iconReadErr != nil || !bytes.Equal(installedIcon, iconPayload) {
+		if err := os.WriteFile(iconPath, iconPayload, 0o644); err != nil {
+			return fmt.Errorf("não foi possível instalar o ícone: %w", err)
+		}
 	}
 
 	manifest := launcher.Component{
@@ -323,7 +328,7 @@ func install(options setupOptions) error {
 	}
 	if !options.noRegistry {
 		size := int64(len(launcherPayload) + len(gitComponentPayload) + len(dashboardPayload))
-		if err := registerUninstaller(options, filepath.Join(options.installDir, "zyr-git.ico"), uninstallerPath, size); err != nil {
+		if err := registerUninstaller(options, iconPath, uninstallerPath, size); err != nil {
 			return fmt.Errorf("o componente foi instalado, mas não pôde ser registrado para desinstalação: %w", err)
 		}
 		_ = runReg("delete", oldUninstallKey, "/f")
